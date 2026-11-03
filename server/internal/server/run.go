@@ -9,11 +9,12 @@ import (
 )
 
 type Config struct {
-	Addr string
+	Addr  string
+	Token string
 }
 
 func Run(ctx context.Context, cfg Config) error {
-	srv := &http.Server{Addr: cfg.Addr, Handler: api.NewRouter()}
+	srv := &http.Server{Addr: cfg.Addr, Handler: api.NewRouter(cfg.Token)}
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.ListenAndServe() }()
 	select {

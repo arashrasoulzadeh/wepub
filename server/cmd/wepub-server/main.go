@@ -12,7 +12,7 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	cfg := server.Config{Addr: ":8080"}
+	cfg := server.Config{Addr: ":8080", Token: os.Getenv("WEPUB_TOKEN")}
 	if err := server.Run(ctx, cfg); err != nil {
 		os.Exit(1)
 	}
