@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS blobs (
+  sha256 TEXT PRIMARY KEY,
+  size INTEGER NOT NULL,
+  mime TEXT,
+  created_at TEXT
+);
