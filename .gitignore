@@ -1,0 +1,39 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.iml
+*.ipr
+*.iws
+.idea/
+ios/Pods/
+ios/.symlinks/
+macos/Flutter/ephemeral/
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+*.g.dart
+*.freezed.dart
+
+# Go
+server/bin/
+*.test
+*.exe
+
+# Data / SQLite
+*.db
+*.db-wal
+*.db-shm
+/data
+server/data/
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# Spike (reference only)
+spike/build/
+spike/.dart_tool/
