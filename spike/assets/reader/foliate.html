@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wepub spike foliate</title>
+<style>
+  html, body { margin: 0; height: 100%; font-family: -apple-system, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  #bar { display: flex; gap: 6px; padding: 6px; background: #eee; flex-wrap: wrap; align-items: center; font-size: 13px; }
+  #host { flex: 1; min-height: 0; background: #fff; }
+  foliate-view { display: block; width: 100%; height: 100%; }
+  #info { padding: 4px 8px; font-size: 12px; background: #ddd; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <select id="book">
+    <option value="divan_hafez.epub">Divan-e Hafez (real)</option>
+    <option value="persian.epub">Persian RTL</option>
+    <option value="fixed_rtl.epub">Fixed RTL</option>
+    <option value="plain.epub">Plain EN</option>
+  </select>
+  <select id="flow">
+    <option value="paginated">Paginated</option>
+    <option value="scrolled">Scroll</option>
+  </select>
+  <button id="prev">Prev</button><button id="next">Next</button>
+</div>
+<div id="host"></div>
+<div id="info"></div>
+<script type="module">
+import '../foliate/view.js';
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+let view;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function log(o) { console.log('REPORT ' + JSON.stringify(o)); $('info').textContent = JSON.stringify(o, null, 1); }
+
+async function open(name, flow) {
+  if (view) { view.close?.(); view.remove(); }
+  $('host').innerHTML = '';
+  view = document.createElement('foliate-view');
+  $('host').append(view);
+  let relocates = 0;
+  view.addEventListener('relocate', () => relocates++);
+  const t0 = performance.now();
+  const blob = await (await fetch('../books/' + name)).blob();
+  const file = new File([blob], name, { type: 'application/epub+zip' });
+  await view.open(file);
+  if (!view.isFixedLayout) view.renderer.setAttribute('flow', flow);
+  await view.goTo(0).catch(() => {});
+  await sleep(100);
+  const info = {
+    book: name, flow, engine: 'foliate',
+    firstDisplayMs: Math.round(performance.now() - t0),
+    fixed: view.isFixedLayout, dir: view.book.dir,
+    renderer: view.renderer.tagName.toLowerCase(),
+    title: typeof view.book.metadata?.title === 'string' ? view.book.metadata.title : JSON.stringify(view.book.metadata?.title),
+    relocates,
+  };
+  log(info);
+}
+
+function pos() {
+  const l = view.lastLocation || {};
+  return { cfi: l.cfi, fraction: l.fraction != null ? +l.fraction.toFixed(4) : null, section: l.location?.current ?? null };
+}
+
+async function timeTurns(n) {
+  const positions = [pos()];
+  const times = [], vis = [];
+  for (let i = 0; i < n; i++) {
+    const t = performance.now();
+    const vis0 = document.visibilityState;
+    let rafGap = 0, last = performance.now(), run = true;
+    (function tick() { const n = performance.now(); rafGap = Math.max(rafGap, n - last); last = n; if (run) requestAnimationFrame(tick); })();
+    await view.next();
+    run = false;
+    times.push(Math.round(performance.now() - t));
+    vis.push(vis0 + '/' + document.visibilityState + ' rafGapMs=' + Math.round(rafGap) + ' focus=' + document.hasFocus());
+    await sleep(120);
+    positions.push(pos());
+  }
+  const t = performance.now();
+  await view.prev();
+  const prevMs = Math.round(performance.now() - t);
+  await sleep(120);
+  positions.push(pos());
+  const advanced = new Set(positions.slice(0, n + 1).map((p) => p.cfi)).size > 1;
+  log({ engine: 'foliate', turnsMs: times, vis, prevMs, advanced });
+}
+
+$('book').onchange = () => open($('book').value, $('flow').value);
+$('flow').onchange = () => open($('book').value, $('flow').value);
+$('prev').onclick = () => view.prev();
+$('next').onclick = () => view.next();
+
+window.runAuto = async function () {
+  for (const b of ['divan_hafez.epub', 'persian.epub', 'fixed_rtl.epub', 'plain.epub']) {
+    for (const f of ['paginated', 'scrolled']) {
+      try { await open(b, f); await timeTurns(3); }
+      catch (e) { log({ book: b, flow: f, engine: 'foliate', error: String(e && e.stack || e) }); }
+    }
+  }
+  console.log('REPORT_DONE');
+};
+
+if (params.get('auto')) setTimeout(runAuto, 500);
+else open($('book').value, $('flow').value);
+</script>
+</body>
+</html>

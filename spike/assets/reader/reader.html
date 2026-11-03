@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wepub spike reader</title>
+<style>
+  html, body { margin: 0; height: 100%; font-family: -apple-system, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  #bar { display: flex; gap: 6px; padding: 6px; background: #eee; flex-wrap: wrap; align-items: center; font-size: 13px; }
+  #viewer { flex: 1; min-height: 0; background: #fff; }
+  #info { padding: 4px 8px; font-size: 12px; background: #ddd; white-space: pre-wrap; }
+  button, select { font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <select id="book">
+    <option value="divan_hafez.epub">Divan-e Hafez (real)</option>
+    <option value="persian.epub">Persian RTL</option>
+    <option value="fixed_rtl.epub">Fixed RTL</option>
+    <option value="plain.epub">Plain EN</option>
+  </select>
+  <select id="flow">
+    <option value="paginated">Paginated</option>
+    <option value="scrolled-doc">Scroll</option>
+  </select>
+  <button id="prev">Prev</button><button id="next">Next</button>
+  <button id="dark">Dark</button>
+</div>
+<div id="viewer"></div>
+<div id="info"></div>
+<script src="jszip.min.js"></script>
+<script src="epub.min.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+let book, rendition;
+const report = [];
+function log(o) { report.push(o); console.log('REPORT ' + JSON.stringify(o)); $('info').textContent = JSON.stringify(o, null, 1); }
+
+async function open(name, flow) {
+  if (rendition) { rendition.destroy(); }
+  $('viewer').innerHTML = '';
+  const t0 = performance.now();
+  book = ePub('../books/' + name);
+  await book.ready;
+  const md = book.packaging.metadata;
+  rendition = book.renderTo('viewer', { width: '100%', height: '100%', flow, spread: 'auto', allowScriptedContent: false });
+  rendition.themes.register('dark', { body: { background: '#111', color: '#ddd' } });
+  await rendition.display();
+  const t1 = performance.now();
+  const doc = rendition.getContents()[0]?.document;
+  const info = {
+    book: name, flow,
+    firstDisplayMs: Math.round(t1 - t0),
+    layout: rendition.settings.layout || md.layout || 'reflowable',
+    pageDirection: book.packaging.metadata.direction,
+    spineDir: book.packaging.spine?.direction,
+    bodyDir: doc ? getComputedStyle(doc.body).direction : null,
+    columns: doc ? getComputedStyle(doc.documentElement).columnWidth : null,
+    iframes: document.querySelectorAll('#viewer iframe').length,
+    title: md.title,
+  };
+  log(info);
+  return info;
+}
+
+async function timeTurns(n) {
+  const times = [];
+  for (let i = 0; i < n; i++) {
+    const t = performance.now();
+    await rendition.next();
+    times.push(Math.round(performance.now() - t));
+  }
+  let backOk = true;
+  const loc = rendition.currentLocation();
+  const t = performance.now();
+  await rendition.prev();
+  const prevMs = Math.round(performance.now() - t);
+  const loc2 = rendition.currentLocation();
+  log({ turnsMs: times, prevMs, startCfi: loc?.start?.cfi, afterPrevCfi: loc2?.start?.cfi });
+}
+
+$('book').onchange = () => open($('book').value, $('flow').value);
+$('flow').onchange = () => open($('book').value, $('flow').value);
+$('prev').onclick = () => rendition.prev();
+$('next').onclick = () => rendition.next();
+$('dark').onclick = () => rendition.themes.select('dark');
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'ArrowRight') rendition.next();
+  if (e.key === 'ArrowLeft') rendition.prev();
+});
+
+window.runAuto = async function () {
+  for (const b of ['divan_hafez.epub', 'persian.epub', 'fixed_rtl.epub', 'plain.epub']) {
+    for (const f of ['paginated', 'scrolled-doc']) {
+      try {
+        await open(b, f);
+        await timeTurns(3);
+      } catch (e) { log({ book: b, flow: f, error: String(e) }); }
+    }
+  }
+  console.log('REPORT_DONE');
+};
+
+if (params.get('auto')) { window.addEventListener('load', () => setTimeout(runAuto, 500)); }
+else { open($('book').value, $('flow').value); }
+</script>
+</body>
+</html>
