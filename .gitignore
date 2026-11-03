@@ -37,3 +37,4 @@ node_modules/
 # Spike (reference only)
 spike/build/
 spike/.dart_tool/
+server/wepub-server
