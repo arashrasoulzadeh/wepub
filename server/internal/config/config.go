@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
-	Addr       string
-	DataDir    string
-	Token      string
+	Addr        string
+	DataDir     string
+	Token       string
 	MaxUploadMB int
 }
 

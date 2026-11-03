@@ -2,19 +2,34 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"time"
 
 	"github.com/arashrasoulzadeh/wepub/server/internal/api"
+	"github.com/arashrasoulzadeh/wepub/server/internal/store"
 )
 
 type Config struct {
-	Addr  string
-	Token string
+	Addr    string
+	Token   string
+	DataDir string
 }
 
 func Run(ctx context.Context, cfg Config) error {
-	srv := &http.Server{Addr: cfg.Addr, Handler: api.NewRouter(cfg.Token)}
+	var db *sql.DB
+	if cfg.DataDir != "" {
+		d, err := store.Open(cfg.DataDir + "/wepub.db")
+		if err != nil {
+			return err
+		}
+		if err := store.Migrate(d); err != nil {
+			d.Close()
+			return err
+		}
+		db = d
+	}
+	srv := &http.Server{Addr: cfg.Addr, Handler: api.NewRouter(cfg.Token, db)}
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.ListenAndServe() }()
 	select {

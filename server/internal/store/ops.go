@@ -2,11 +2,19 @@ package store
 
 import (
 	"database/sql"
-
-	"github.com/arashrasoulzadeh/wepub/server/internal/sync"
 )
 
-func AppendOps(db *sql.DB, ops []sync.Op) ([]int64, error) {
+type Op struct {
+	ID       string `json:"id"`
+	DeviceID string `json:"device_id"`
+	HLC      string `json:"hlc"`
+	Entity   string `json:"entity"`
+	EntityID string `json:"entity_id"`
+	Field    string `json:"field"`
+	Value    []byte `json:"value"`
+}
+
+func AppendOps(db *sql.DB, ops []Op) ([]int64, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return nil, err
@@ -29,7 +37,7 @@ func AppendOps(db *sql.DB, ops []sync.Op) ([]int64, error) {
 	return seqs, nil
 }
 
-func PullOps(db *sql.DB, cursor int64, limit int) ([]sync.Op, int64, bool, error) {
+func PullOps(db *sql.DB, cursor int64, limit int) ([]Op, int64, bool, error) {
 	if limit <= 0 {
 		limit = 500
 	}
@@ -41,13 +49,13 @@ func PullOps(db *sql.DB, cursor int64, limit int) ([]sync.Op, int64, bool, error
 		return nil, cursor, false, err
 	}
 	defer rows.Close()
-	var ops []sync.Op
+	var ops []Op
 	var lastSeq int64 = cursor
 	count := 0
 	hasMore := false
 	for rows.Next() {
 		var seq int64
-		var op sync.Op
+		var op Op
 		var val []byte
 		if err := rows.Scan(&seq, &op.ID, &op.DeviceID, &op.HLC, &op.Entity, &op.EntityID, &op.Field, &val); err != nil {
 			return nil, cursor, false, err
@@ -66,3 +74,4 @@ func PullOps(db *sql.DB, cursor int64, limit int) ([]sync.Op, int64, bool, error
 	}
 	return ops, lastSeq, hasMore, nil
 }
+

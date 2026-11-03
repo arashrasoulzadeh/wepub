@@ -5,19 +5,13 @@ import (
 	"fmt"
 	"regexp"
 	"time"
+
+	"github.com/arashrasoulzadeh/wepub/server/internal/store"
 )
 
-var ulidRe = regexp.MustCompile(`^[0-9A-HJKMNP-TV-Z]{26}$`)
+type Op = store.Op
 
-type Op struct {
-	ID       string `json:"id"`
-	DeviceID string `json:"device_id"`
-	HLC      string `json:"hlc"`
-	Entity   string `json:"entity"`
-	EntityID string `json:"entity_id"`
-	Field    string `json:"field"`
-	Value    []byte `json:"value"`
-}
+var ulidRe = regexp.MustCompile(`^[0-9A-HJKMNP-TV-Z]{26}$`)
 
 func ValidateOp(op Op, now time.Time) error {
 	if op.ID == "" || !ulidRe.MatchString(op.ID) {
