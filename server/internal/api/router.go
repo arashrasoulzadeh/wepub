@@ -6,12 +6,13 @@ import (
 	"net/http"
 
 	"github.com/arashrasoulzadeh/wepub/server/internal/auth"
+	"github.com/arashrasoulzadeh/wepub/server/internal/blob"
 	"github.com/arashrasoulzadeh/wepub/server/internal/sync"
 )
 
 const APIVersion = 1
 
-func NewRouter(token string, db *sql.DB) http.Handler {
+func NewRouter(token string, db *sql.DB, dataDir string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -26,6 +27,12 @@ func NewRouter(token string, db *sql.DB) http.Handler {
 	})
 	v1.HandleFunc("/sync/push", sync.NewPushHandler(db))
 	v1.HandleFunc("/sync/pull", sync.NewPullHandler(db))
+	v1.HandleFunc("/blobs/", func(w http.ResponseWriter, r *http.Request) {
+		sha := r.URL.Path[len("/blobs/"):]
+		_ = sha
+		if r.Method == http.MethodPut { blob.UploadHandler(dataDir, db).ServeHTTP(w,r); return }
+		blob.DownloadHandler(dataDir).ServeHTTP(w,r)
+	})
 	v1.Handle("/auth/check", auth.Bearer(token)(http.HandlerFunc(auth.CheckHandler)))
 	mux.Handle("/v1/", auth.Bearer(token)(http.StripPrefix("/v1", v1)))
 	// version is public per S1.1 (except /healthz and /v1/version)

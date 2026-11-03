@@ -75,3 +75,8 @@ func PullOps(db *sql.DB, cursor int64, limit int) ([]Op, int64, bool, error) {
 	return ops, lastSeq, hasMore, nil
 }
 
+
+func InsertBlob(db *sql.DB, sha string, size int64, mime string) {
+	if db == nil { return }
+	db.Exec("INSERT OR IGNORE INTO blobs(sha256,size,mime,created_at) VALUES (?,?,?,datetime('now'))", sha, size, mime)
+}

@@ -29,7 +29,7 @@ func Run(ctx context.Context, cfg Config) error {
 		}
 		db = d
 	}
-	srv := &http.Server{Addr: cfg.Addr, Handler: api.NewRouter(cfg.Token, db)}
+	srv := &http.Server{Addr: cfg.Addr, Handler: api.NewRouter(cfg.Token, db, cfg.DataDir)}
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.ListenAndServe() }()
 	select {

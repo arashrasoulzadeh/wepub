@@ -7,7 +7,7 @@ import (
 )
 
 func TestHealthz(t *testing.T) {
-	h := NewRouter("secret", nil)
+	h := NewRouter("secret", nil, t.TempDir())
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	h.ServeHTTP(rr, req)
@@ -20,7 +20,7 @@ func TestHealthz(t *testing.T) {
 }
 
 func TestVersion(t *testing.T) {
-	h := NewRouter("secret", nil)
+	h := NewRouter("secret", nil, t.TempDir())
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/version", nil)
 	h.ServeHTTP(rr, req)
@@ -33,7 +33,7 @@ func TestVersion(t *testing.T) {
 }
 
 func TestUnversioned404(t *testing.T) {
-	h := NewRouter("secret", nil)
+	h := NewRouter("secret", nil, t.TempDir())
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/foo", nil)
 	h.ServeHTTP(rr, req)
